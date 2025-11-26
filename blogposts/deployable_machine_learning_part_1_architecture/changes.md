@@ -52,7 +52,7 @@ This series walks through a production-ready ML workflow I built to demonstrate 
 
 **The example:** I'm using the [wine quality dataset](https://archive.ics.uci.edu/dataset/186/wine+quality) and Ridge regression from scikit-learn. Simple data (11 numeric features → quality score 0-10), simple model. The architecture is what matters.
 
-**Follow along:** Clone [the repository](LINK_HERE) and run the code. This post covers the high-level architecture. Future posts dive into configuration management, drift detection, and MLflow integration patterns.
+**Follow along:** Clone [the repository](https://github.com/tsuhina/blog_deployableml) and run the code. This post covers the high-level architecture. Future posts dive into configuration management, drift detection, and MLflow integration patterns.
 ```
 
 **Implementation Notes:**
@@ -138,7 +138,7 @@ In this first blog post of the series, I've shown you one approach to structurin
 
 In the upcoming blog posts, I'll dive deeper into specific patterns used in this repository (configuration management, data validation and drift detection, using scikit-learn pipelines, usage of mlflow for lineage tracking).
 
-If you found this useful, check out the repository [Repository Link] and follow along for the rest of the series. What patterns have you found most useful in your ML deployments? Share your thoughts in the comments below.
+If you found this useful, check out the repository [https://github.com/tsuhina/blog_deployableml](https://github.com/tsuhina/blog_deployableml) and follow along for the rest of the series. What patterns have you found most useful in your ML deployments? Share your thoughts in the comments below.
 ```
 
 **Proposed Change:**
@@ -154,7 +154,7 @@ This architecture solves three production ML problems:
 **The cost:** You need to run four CLI commands instead of one script. The payoff is debugging production issues in minutes instead of days.
 
 **Next steps:**
-- Clone [the repository](LINK_HERE) and run the pipeline yourself
+- Clone [the repository](https://github.com/tsuhina/blog_deployableml) and run the pipeline yourself
 - Check out the MLflow UI to explore lineage tracking
 - Read Part 2 (configuration management with Pydantic) when it drops
 

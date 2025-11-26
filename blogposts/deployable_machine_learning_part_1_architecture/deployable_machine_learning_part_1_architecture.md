@@ -176,7 +176,7 @@ This architecture demonstrates one approach to structuring ML code for productio
 
 The next posts in this series cover specific patterns in depth: configuration management, data validation and drift detection, scikit-learn pipelines, and MLflow lineage tracking.
 
-The repository is available at [Repository Link]. I'm curious what patterns you've found most useful in your ML deployments. Drop your thoughts in the comments.
+The repository is available at [https://github.com/tsuhina/blog_deployableml](https://github.com/tsuhina/blog_deployableml). I'm curious what patterns you've found most useful in your ML deployments. Drop your thoughts in the comments.
 
 ## In Part 2
 

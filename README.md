@@ -44,7 +44,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 Then clone and install the project:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/tsuhina/blog_deployableml.git
 cd wine-quality-mlops
 uv sync
 ```
