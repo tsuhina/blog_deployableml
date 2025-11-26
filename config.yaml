@@ -1,0 +1,40 @@
+# Wine Quality MLOps Configuration
+
+# Data settings
+data:
+  path: "data/raw/wine_quality.csv"
+  inference_path: "data/raw/wine_quality.csv"
+  target_column: "quality"
+  test_size: 0.2
+  random_state: 42
+
+# Model settings
+model:
+  type: "Ridge"
+  quality_score_min: 0
+  quality_score_max: 10
+
+# Optimization settings
+optimization:
+  n_trials: 50
+  cv_folds: 5
+  alpha_min: 0.001
+  alpha_max: 100.0
+
+# Data quality settings
+data_quality:
+  max_allowed_failures: 1
+  # min_pass_rate: 0.95  # Optional: alternative threshold
+
+# MLflow settings
+mlflow:
+  experiment_name: "wine_quality_regression"
+  tracking_uri: "mlruns"
+  # Tags used to mark "active" runs for automatic fallback
+  # Standardized pattern: "active-{step-type}" in kebab-case
+  default_tags:
+    prepare_data: "active-prepare-data"
+    training: "active-training"
+    inference_dq: "active-inference-dq"
+  # Model Registry model name
+  model_name: "wine_quality_regressor"

@@ -1,0 +1,24 @@
+{
+  "theme": "base",
+  "themeVariables": {
+    "fontSize": "22px",
+    "fontFamily": "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+    "edgeLabelBackground": "#ffffff",
+    "edgeLabelTextColor": "#1f2937",
+    "edgeLabelFontSize": "14px",
+    "primaryTextColor": "#1f2937",
+    "lineColor": "#1f2937"
+  },
+  "flowchart": {
+    "useMaxWidth": false,
+    "htmlLabels": false,
+    "curve": "basis",
+    "padding": 15,
+    "nodeSpacing": 60,
+    "rankSpacing": 100,
+    "diagramPadding": 20,
+    "wrappingWidth": 500,
+    "textWrap": false
+  }
+}
+

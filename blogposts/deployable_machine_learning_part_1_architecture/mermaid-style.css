@@ -1,0 +1,37 @@
+/* Prevent text wrapping in edge labels */
+.mermaid .edgeLabel text {
+    white-space: nowrap !important;
+}
+
+/* Prevent text wrapping in all text elements */
+.mermaid text {
+    white-space: nowrap !important;
+}
+
+/* Ensure edge labels don't wrap */
+.mermaid .edgeLabel {
+    white-space: nowrap !important;
+}
+
+/* Prevent wrapping in flowchart edge labels */
+.mermaid .flowchart .edgeLabel {
+    white-space: nowrap !important;
+    overflow: visible !important;
+}
+
+/* Force all text spans to not wrap */
+.mermaid tspan {
+    white-space: nowrap !important;
+}
+
+/* Special handling for our custom runTitle class */
+.runTitle > rect {
+    fill: none !important;
+    stroke: none !important;
+}
+
+.runTitle .nodeLabel {
+    font-weight: bold !important;
+    color: #475569 !important;
+    font-size: 18px !important;
+}
