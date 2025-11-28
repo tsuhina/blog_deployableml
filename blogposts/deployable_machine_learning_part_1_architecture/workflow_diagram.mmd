@@ -1,90 +1,82 @@
 flowchart TB
     %% ---------------------------------------------------------
-    %% Nodes (Inputs)
+    %% External Inputs
     %% ---------------------------------------------------------
-    RawData[("📄 Raw Data<br/>(winequality.csv)")]
-    InferenceData[("📄 Inference Data<br/>(batch.csv)")]
+    RawData[("Raw Data<br/>(winequality.csv)")]
+    InferenceFile[("Inference Data<br/>(batch.csv)")]
 
     %% ---------------------------------------------------------
-    %% Run 1: Prepare Data
+    %% LEFT COLUMN: Data Preparation Path
     %% ---------------------------------------------------------
-    subgraph Run_Prepare [ ]
+    subgraph PrepPath[" "]
         direction TB
-        Title_Prepare["MLflow Run: prepare-data"]
-        PrepareStep["1. Command:<br/>prepare-data"]
-        ArtRaw[("📦 Artifact:<br/>raw_data.parquet")]
-        
-        Title_Prepare ~~~ PrepareStep
-        PrepareStep -->|"Log"| ArtRaw
+
+        subgraph Run_Prepare[MLflow Run: prepare-data]
+            direction TB
+            PrepareStep["1. prepare-data"]
+            ArtRaw[("raw_data.parquet<br/>(validated dataset)")]
+            PrepareStep -->|"Log artifact"| ArtRaw
+        end
+
+        subgraph Run_Training[MLflow Run: training]
+            direction TB
+            TrainStep["2. training"]
+            ArtModel[("Model<br/>(sklearn pipeline)")]
+            TrainStep -->|"Log model"| ArtModel
+        end
     end
 
     %% ---------------------------------------------------------
-    %% Run 2: Training
+    %% RIGHT COLUMN: Inference Path
     %% ---------------------------------------------------------
-    subgraph Run_Training [ ]
+    subgraph InfPath[" "]
         direction TB
-        Title_Training["MLflow Run: training"]
-        TrainStep["2. Command:<br/>training"]
-        ArtModel[("📦 Artifact:<br/>Model (sklearn)")]
-        
-        Title_Training ~~~ TrainStep
-        TrainStep -->|"Log"| ArtModel
+
+        subgraph Run_DQ[MLflow Run: inference-dq]
+            direction TB
+            DQStep["3. inference-dq"]
+            ArtInfFeat[("inference_features.parquet<br/>(drift-checked)")]
+            DQStep -->|"Log if pass"| ArtInfFeat
+        end
+
+        subgraph Run_Inference[MLflow Run: inference]
+            direction TB
+            InferStep["4. inference"]
+            ArtPred[("predictions.parquet")]
+            InferStep -->|"Log"| ArtPred
+        end
     end
 
     %% ---------------------------------------------------------
-    %% Run 3: Inference DQ
+    %% Model Registry (Central Component)
     %% ---------------------------------------------------------
-    subgraph Run_DQ [ ]
-        direction TB
-        Title_DQ["MLflow Run: inference-dq"]
-        DQStep["3. Command:<br/>inference-dq"]
-        ArtInfFeat[("📦 Artifact:<br/>inference_features.parquet")]
-        
-        Title_DQ ~~~ DQStep
-        DQStep -->|"Log (if pass)"| ArtInfFeat
-    end
-
-    %% Force Training and DQ to be side-by-side
-    TrainStep ~~~ DQStep
+    Registry[("Model Registry<br/>(staging/champion)")]
 
     %% ---------------------------------------------------------
-    %% Run 4: Inference
-    %% ---------------------------------------------------------
-    subgraph Run_Inference [ ]
-        direction TB
-        Title_Inference["MLflow Run: inference"]
-        InferStep["4. Command:<br/>inference"]
-        ArtPred[("📦 Artifact:<br/>predictions.parquet")]
-        
-        Title_Inference ~~~ InferStep
-        InferStep -->|"Log"| ArtPred
-    end
-
-    %% ---------------------------------------------------------
-    %% Registry (External Service)
-    %% ---------------------------------------------------------
-    Registry[("🏛️ Model Registry<br/>(champion/staging)")]
-
-    %% ---------------------------------------------------------
-    %% Cross-Run Flows (Lineage)
+    %% DATA FLOWS (Solid Arrows)
     %% ---------------------------------------------------------
 
-    %% Prepare Inputs
+    %% Step 1: prepare-data inputs
     RawData -->|"Load"| PrepareStep
 
-    %% Training Inputs
-    ArtRaw -->|"Load"| TrainStep
+    %% Step 2: training inputs
+    ArtRaw -->|"Load dataset"| TrainStep
     TrainStep -->|"Register"| Registry
-    Registry -.->|"References"| ArtModel
 
-    %% DQ Inputs
-    InferenceData -->|"Load (Target)"| DQStep
-    ArtRaw -->|"Load (Baseline)"| DQStep
+    %% Step 3: inference-dq inputs
+    ArtRaw -->|"Load reference"| DQStep
+    InferenceFile -->|"Load target"| DQStep
 
-    %% Inference Inputs
-    Registry -.->|"Resolve Alias"| InferStep
-    ArtModel -->|"Load Model"| InferStep
-    ArtInfFeat -->|"Load Features"| InferStep
+    %% Step 4: inference inputs
+    Registry -->|"Load by alias"| InferStep
+    ArtInfFeat -->|"Load validated features"| InferStep
+
+    %% ---------------------------------------------------------
+    %% LINEAGE REFERENCES (Dotted Arrows - Run ID Parameters)
+    %% ---------------------------------------------------------
+    TrainStep -.->|"logs prepare_run_id"| Run_Prepare
+    DQStep -.->|"logs model_run_id"| Run_Training
+    InferStep -.->|"logs inference_dq_run_id"| Run_DQ
 
     %% ---------------------------------------------------------
     %% Styling
@@ -93,16 +85,12 @@ flowchart TB
     classDef data fill:#F3F4F6,stroke:#374151,stroke-width:2px,color:#000
     classDef artifact fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#000
     classDef registry fill:#FEE2E2,stroke:#DC2626,stroke-width:2px,color:#000
-    
-    %% Title Styling - invisible background, bold text
-    classDef runTitle fill:none,stroke:none,font-weight:bold,font-size:16px,color:#475569
-    
-    %% Subgraph Styling
+    classDef pathGroup fill:#FFFFFF,stroke:none
     classDef runGroup fill:#FFFFFF,stroke:#94A3B8,stroke-width:2px,stroke-dasharray: 5 5,color:#475569
 
     class PrepareStep,TrainStep,DQStep,InferStep step
-    class RawData,InferenceData data
+    class RawData,InferenceFile data
     class ArtRaw,ArtModel,ArtInfFeat,ArtPred artifact
     class Registry registry
+    class PrepPath,InfPath pathGroup
     class Run_Prepare,Run_Training,Run_DQ,Run_Inference runGroup
-    class Title_Prepare,Title_Training,Title_DQ,Title_Inference runTitle
