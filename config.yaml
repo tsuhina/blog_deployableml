@@ -20,6 +20,12 @@ optimization:
   cv_folds: 5
   alpha_min: 0.001
   alpha_max: 100.0
+  enable_pruning: true
+  pruner_type: "median"  # median, successive_halving, none
+  n_startup_trials: 5
+  n_warmup_steps: 1
+  sampler_type: "tpe"  # tpe, random, cmaes
+  sampler_seed: null  # Uses data.random_state if null
 
 # Data quality settings
 data_quality:

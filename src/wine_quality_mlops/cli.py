@@ -291,56 +291,63 @@ def training(
     artifact_uri = f"runs:/{prepare_run_id}/raw_data.parquet"
     dataset_source = LocalArtifactDatasetSource(uri=artifact_uri)
 
-    # 4. Hyperparameter optimization
-    logger.info("Optimizing hyperparameters with Optuna...")
-    best_params = optimize_hyperparameters(
-        X_train,
-        y_train,
-        n_trials=config.optimization.n_trials,
-    )
-
-    # 5. Train final model
-    logger.info("Training final model...")
-    pipeline = train_model(X_train, y_train, best_params)
-
-    # 6. Evaluate
-    logger.info("Evaluating model...")
-    train_metrics = evaluate_model(pipeline, X_train, y_train)
-    test_metrics = evaluate_model(pipeline, X_test, y_test)
-
-    logger.info("Train Metrics:")
-    for metric, value in train_metrics.items():
-        logger.info(f"  {metric.upper()}: {value:.4f}")
-
-    logger.info("Test Metrics:")
-    for metric, value in test_metrics.items():
-        logger.info(f"  {metric.upper()}: {value:.4f}")
-
-    # 7. Create visualizations
-    logger.info("Creating visualizations...")
-    y_test_pred = pipeline.predict(X_test)
-
-    predictions_vs_actual_fig = plot_predictions_vs_actual(y_test, y_test_pred)
-    residuals_fig = plot_residuals(y_test, y_test_pred)
-    feature_coefficients_fig = plot_feature_coefficients(pipeline, X_train.columns)
-    distribution_comparison_fig = plot_distribution_comparison(y_test, y_test_pred)
-
-    # 8. MLflow logging
+    # 4. Start MLflow run early to enable Optuna integration
     logger.info("Logging to MLflow...")
-
     mlflow.set_experiment(config.mlflow.experiment_name)
 
     # Create run name with step type appended
     final_run_name = f"{run_name}-training" if run_name else "training"
 
     with mlflow.start_run(run_name=final_run_name) as run:
-        # Log lineage
+        # Log lineage and split parameters early
         mlflow.log_param("prepare_run_id", prepare_run_id)
-
-        # Log split parameters (needed for dataset reconstruction)
         mlflow.log_param("test_size", config.data.test_size)
         mlflow.log_param("random_state", config.data.random_state)
 
+        # Log optimization configuration
+        mlflow.log_param("optimization_enable_pruning", config.optimization.enable_pruning)
+        mlflow.log_param("optimization_pruner_type", config.optimization.pruner_type)
+        mlflow.log_param("optimization_sampler_type", config.optimization.sampler_type)
+        mlflow.log_param("optimization_n_startup_trials", config.optimization.n_startup_trials)
+        mlflow.log_param("optimization_n_warmup_steps", config.optimization.n_warmup_steps)
+
+        # 5. Hyperparameter optimization
+        logger.info("Optimizing hyperparameters with Optuna...")
+        best_params = optimize_hyperparameters(
+            X_train,
+            y_train,
+            n_trials=config.optimization.n_trials,
+        )
+
+        # Log Optuna optimization results
+        mlflow.log_param("optimization_n_trials", config.optimization.n_trials)
+        mlflow.log_param("optimization_cv_folds", config.optimization.cv_folds)
+
+        # 6. Train final model
+        logger.info("Training final model...")
+        pipeline = train_model(X_train, y_train, best_params)
+
+        # 7. Evaluate
+        logger.info("Evaluating model...")
+        train_metrics = evaluate_model(pipeline, X_train, y_train)
+        test_metrics = evaluate_model(pipeline, X_test, y_test)
+
+        logger.info("Train Metrics:")
+        for metric, value in train_metrics.items():
+            logger.info(f"  {metric.upper()}: {value:.4f}")
+
+        logger.info("Test Metrics:")
+        for metric, value in test_metrics.items():
+            logger.info(f"  {metric.upper()}: {value:.4f}")
+
+        # 8. Create visualizations
+        logger.info("Creating visualizations...")
+        y_test_pred = pipeline.predict(X_test)
+
+        predictions_vs_actual_fig = plot_predictions_vs_actual(y_test, y_test_pred)
+        residuals_fig = plot_residuals(y_test, y_test_pred)
+        feature_coefficients_fig = plot_feature_coefficients(pipeline, X_train.columns)
+        distribution_comparison_fig = plot_distribution_comparison(y_test, y_test_pred)
         # Log train and test datasets separately
         # Best practice: Log each dataset once per context/transformation
         # Both point to same source - reconstruction via split parameters ensures reproducibility

@@ -43,6 +43,31 @@ class OptimizationConfig(BaseModel):
     cv_folds: int = Field(gt=1, description="Number of cross-validation folds")
     alpha_min: float = Field(gt=0.0, description="Minimum alpha value for Ridge")
     alpha_max: float = Field(gt=0.0, description="Maximum alpha value for Ridge")
+    enable_pruning: bool = Field(
+        default=True, description="Enable Optuna pruning to stop unpromising trials early"
+    )
+    pruner_type: str = Field(
+        default="median",
+        description="Pruner type: 'median', 'successive_halving', or 'none'",
+    )
+    n_startup_trials: int = Field(
+        default=5,
+        gt=0,
+        description="Number of startup trials before pruning starts",
+    )
+    n_warmup_steps: int = Field(
+        default=1,
+        ge=0,
+        description="Number of warmup steps before pruning evaluation",
+    )
+    sampler_type: str = Field(
+        default="tpe",
+        description="Sampler type: 'tpe', 'random', or 'cmaes'",
+    )
+    sampler_seed: Optional[int] = Field(
+        default=None,
+        description="Seed for sampler. Uses data.random_state if None",
+    )
 
 
 class DataQualityConfig(BaseModel):
