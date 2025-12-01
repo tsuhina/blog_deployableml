@@ -85,9 +85,9 @@ def get_project_dependencies() -> List[str]:
                 pkg["name"].lower().replace("-", "_"): pkg["version"]
                 for pkg in lock_data.get("package", [])
             }
-        except Exception:
+        except Exception as e:
             # If uv.lock parsing fails, fall back to pyproject.toml specifiers
-            pass
+            logger.debug(f"Could not parse uv.lock, using pyproject.toml: {e}")
 
     # Filter out conditional dependencies and replace versions with exact ones
     filtered_deps = []
@@ -150,20 +150,12 @@ def load_raw_dataset_from_run(run_id: str) -> pd.DataFrame:
         DataFrame containing the raw dataset
 
     Raises:
-        ValueError: If artifact is not found in the run
-        FileNotFoundError: If artifact file cannot be loaded
+        mlflow.exceptions.MlflowException: If artifact not found in the run
+        OSError: If artifact file cannot be read
     """
-    try:
-        # Use MLflow's artifact URI to download the parquet artifact
-        artifact_uri = f"runs:/{run_id}/raw_data.parquet"
-        local_path = mlflow.artifacts.download_artifacts(artifact_uri)
-        
-        # Load the parquet file
-        return pd.read_parquet(local_path)
-    except Exception as e:
-        raise ValueError(
-            f"Could not load raw dataset from run {run_id}: {e}"
-        ) from e
+    artifact_uri = f"runs:/{run_id}/raw_data.parquet"
+    local_path = mlflow.artifacts.download_artifacts(artifact_uri)
+    return pd.read_parquet(local_path)
 
 
 def load_model_from_run(run_id: str) -> Pipeline:

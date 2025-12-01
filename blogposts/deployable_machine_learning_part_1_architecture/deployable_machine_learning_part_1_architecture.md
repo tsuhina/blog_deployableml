@@ -28,9 +28,9 @@ On the technical side, I want **reasonable genericity**, generic enough to adapt
 
 Here's the stack and reasoning behind each choice:
 
-**Pandas** for data manipulation. The standard for ML projects in Python. While Polars and Spark excel at massive scale, pandas integrates seamlessly with scikit-learn and provides everything needed here.
+**Pandas** for data manipulation. The standard for ML projects in Python. While Polars and Spark excel at massive scale, pandas integrates seamlessly with scikit-learn (and other major tools) and provides everything needed here.
 
-**Evidently** for data quality checks and drift detection. Provides minimal setup with excellent HTML reports. I'll use it for training data quality checks and drift detection before inference.
+**Evidently** for data quality checks and drift detection. Provides minimal setup and produces useful HTML reports. I'll use it for training data quality checks and drift detection before inference.
 
 **scikit-learn** for machine learning. The gold standard for composable ML pipelines. Its philosophy of consistency and composability makes it elegant and scalable when used properly.
 
@@ -67,21 +67,21 @@ wine-quality-mlops/
 
 End-to-end workflow consists of four sequential steps that work together to ensure data quality, model training, drift detection, and inference. Each step creates an MLflow run that stores artifacts (anything you can save locally: models, data, figures, and more) and maintains lineage through explicit run ID references. Additionally, trained models are automatically registered to MLflow's Model Registry for version control and alias-based serving. The diagram below illustrates the complete workflow, showing how different runs reference each other, how artifacts are reused across the pipeline, and how models flow into the registry.
 
-> **Diagram Legend:** Boxed groups represent **MLflow Runs**, containing both the command execution and the artifacts they log. Solid arrows show physical data flow (loading/logging artifacts). Dotted arrows show lineage/metadata resolution (e.g., registry lookups). Yellow cylinders represent immutable artifacts. The Model Registry box shows version management and alias-based serving.
+> **Diagram Legend:** The diagram uses a two-column layout separating the Data Preparation Path (left) from the Inference Path (right). Boxed groups represent **MLflow Runs**, containing both the command execution and the artifacts they log. Solid arrows show physical data flow (loading/logging artifacts). Dotted arrows show lineage tracking via run ID parameters (e.g., "logs prepare_run_id"). Yellow cylinders represent immutable artifacts. The Model Registry box shows version management and alias-based serving.
 
 ![Workflow Diagram](workflow_diagram.png)
 
 ### Diagram elaboration
 
-The pipeline flows through four distinct phases, each building on the previous one's outputs.
+The pipeline is organized into two main paths: the Data Preparation Path (left column) and the Inference Path (right column). Each path contains steps that build on previous outputs.
 
-**Phase 1: Prepare Data** is where everything starts. We load raw data from CSV files, normalize data types for consistency, and run Evidently quality checks. The validated dataset gets logged as a `raw_data.parquet` artifact in an MLflow run, becoming the single source of truth for everything downstream.
+**Prepare Data** starts the Data Preparation Path. We load raw data from CSV files, normalize data types for consistency, and run Evidently quality checks. The validated dataset gets logged as a `raw_data.parquet` artifact in an MLflow run, becoming the single source of truth for everything downstream.
 
-**Phase 2: Training** picks up where preparation left off. It references the prepare-data run via the `prepare_run_id` parameter. If you don't provide one, it automatically finds the most recent tagged run. From there, it loads the `raw_data.parquet` artifact, splits into train/test sets, optimizes hyperparameters with Optuna, trains the model, and logs everything: the trained model, evaluation metrics, and visualizations.
+**Training** completes the Data Preparation Path. It references the prepare-data run via the `prepare_run_id` parameter (shown as a dotted arrow). If you don't provide one, it automatically finds the most recent tagged run. From there, it loads the `raw_data.parquet` artifact, splits into train/test sets, optimizes hyperparameters with Optuna, trains the model, and logs everything: the trained model, evaluation metrics, and visualizations.
 
-**Phase 3: Inference Data Quality** is your safety check before predictions. It references the training run (via `model_run_id`) to locate the exact training data used for the model, ensuring a valid baseline for drift comparison. It loads that same `raw_data.parquet` artifact used during training and compares the inference data against it using Evidently's drift detection. Only if drift checks pass does it log the validated inference features as `inference_features.parquet`.
+**Inference Data Quality** begins the Inference Path as your safety check before predictions. It references the training run via the `model_run_id` parameter (dotted arrow) to locate the exact training data used for the model, ensuring a valid baseline for drift comparison. It loads that same `raw_data.parquet` artifact used during training and compares the inference data against it using Evidently's drift detection. Only if drift checks pass does it log the validated inference features as `inference_features.parquet`.
 
-**Phase 4: Inference** is where predictions finally happen. It resolves the correct model version via the Model Registry (using an alias like "champion") and loads the physical model artifact. It also loads validated features from the inference-dq run, generates predictions, and logs them as `predictions.parquet`.
+**Inference** completes the Inference Path where predictions finally happen. It references the inference-dq run via the `inference_dq_run_id` parameter (dotted arrow), resolves the model via the Model Registry by alias (typically "champion"), loads validated features from `inference_features.parquet`, generates predictions, and logs them as `predictions.parquet`.
 
 ### Model Registry Integration
 
@@ -99,9 +99,9 @@ This pattern is particularly valuable in production where you want to decouple m
 
 ### Key Design Patterns
 
-**Run References and Lineage** work through explicit parameter passing. Each run references previous runs via parameters like `prepare_run_id`, `model_run_id`, and `inference_dq_run_id`. These parameters create a clear lineage chain that you can trace through MLflow's UI. And here's the clever part: if you don't provide run IDs explicitly, the system automatically falls back to the most recent run tagged as "active" for that step type. Convenience without sacrificing traceability.
+**Run References and Lineage** work through explicit parameter passing (shown as dotted arrows in the diagram). Each run references previous runs via parameters like `prepare_run_id`, `model_run_id`, and `inference_dq_run_id`. These parameters create a clear lineage chain that you can trace through MLflow's UI. And here's the clever part: if you don't provide run IDs explicitly, the system automatically falls back to the most recent run tagged as "active" for that step type. Convenience without sacrificing traceability.
 
-**Artifact Reuse** is what makes the pipeline efficient. The `raw_data.parquet` artifact from the prepare-data run gets reused in both training and inference-dq runs (arrows crossing run boundaries). The model artifact from training gets reused in inference. The `inference_features.parquet` from inference-dq gets reused in inference. All artifacts are referenced using MLflow's `runs:/{run_id}/artifact_name` URI format, which ensures immutability. Once logged, an artifact never changes. This gives you reproducibility by default.
+**Artifact Reuse** is what makes the pipeline efficient. The `raw_data.parquet` artifact from the prepare-data run gets reused in both training and inference-dq runs (arrows crossing run boundaries). The trained model is registered to the Model Registry and loaded by inference via alias lookup. The `inference_features.parquet` from inference-dq gets reused in inference. All artifacts are referenced using MLflow's `runs:/{run_id}/artifact_name` URI format, which ensures immutability. Once logged, an artifact never changes. This gives you reproducibility by default.
 
 **Quality Gates** protect you at two critical points. First, **data quality checks** in prepare-data can stop the entire pipeline if thresholds are exceeded (like max allowed test failures). Second, **drift detection** in inference-dq acts as a gate before inference is allowed. If the new data looks too different from training data, predictions get blocked. Both use Evidently reports that are logged as HTML artifacts, so you can inspect exactly what triggered the gate.
 

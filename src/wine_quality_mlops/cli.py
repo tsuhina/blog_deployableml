@@ -405,28 +405,22 @@ def training(
         # Model Registry integration - auto-register all models
         training_run_id = run.info.run_id
         logger.info("Registering model to Model Registry...")
-        try:
-            model_uri = f"runs:/{training_run_id}/model"
-            model_version = mlflow.register_model(
-                model_uri=model_uri,
-                name=config.mlflow.model_name
-            )
-            logger.info(f"Registered as version {model_version.version}")
+        model_uri = f"runs:/{training_run_id}/model"
+        model_version = mlflow.register_model(
+            model_uri=model_uri,
+            name=config.mlflow.model_name
+        )
+        logger.info(f"Registered as version {model_version.version}")
 
-            # Set "staging" alias for new models
-            client = MlflowClient()
-            client.set_registered_model_alias(
-                name=config.mlflow.model_name,
-                alias="staging",
-                version=model_version.version
-            )
-            logger.info(f"Set alias 'staging' for version {model_version.version}")
-            logger.info("Promote to 'champion' manually when ready for production")
-
-        except Exception as e:
-            # Non-fatal: Log warning but don't fail the run
-            logger.warning(f"Model registration failed: {e}")
-            logger.warning("Training completed successfully but model not registered")
+        # Set "staging" alias for new models
+        client = MlflowClient()
+        client.set_registered_model_alias(
+            name=config.mlflow.model_name,
+            alias="staging",
+            version=model_version.version
+        )
+        logger.info(f"Set alias 'staging' for version {model_version.version}")
+        logger.info("Promote to 'champion' manually when ready for production")
 
         logger.info(f"Training run ID: {training_run_id}")
 
@@ -517,7 +511,7 @@ def inference(
         X_inference = pd.read_parquet(local_path)
         logger.info(f"Loaded validated inference features: {X_inference.shape}")
         # Note: Data is already normalized (was normalized before logging in inference-dq)
-    except Exception as e:
+    except (mlflow.exceptions.MlflowException, OSError, FileNotFoundError) as e:
         logger.error(f"Could not load inference features from run {inference_dq_run_id}: {e}")
         logger.error("Make sure inference-dq has completed successfully and logged inference_features.parquet")
         raise typer.Exit(code=1)
